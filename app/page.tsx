@@ -1,29 +1,11 @@
 import TrendsTable from "@/components/TrendsTable";
 import { fetchLatestTrends } from "@/lib/data";
 import { TIMEFRAMES } from "@/lib/trends";
-import config from "../config.json";
+import { config } from "@/lib/config";
 
 export const revalidate = 60;
 
-function dedupeTokens(input: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const t of input) {
-    const u = String(t).toUpperCase();
-    if (!seen.has(u)) {
-      seen.add(u);
-      out.push(u);
-    }
-  }
-  return out;
-}
-
-interface ConfigShape {
-  tokens: string[];
-}
-
-const cfg = config as ConfigShape;
-const tokens = dedupeTokens(cfg.tokens);
+const tokens = config.tokens;
 
 export default async function Page() {
   const { tokens: tokenTrends, lastUpdated } = await fetchLatestTrends(tokens);
