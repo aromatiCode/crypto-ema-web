@@ -44,7 +44,7 @@ GitHub Actions (cron every 5 min)
 
 ## Editing the token list
 
-Edit `config.json` and push. Both the pipeline and the web app read it.
+Edit `config.json` at the repo root, then also update `web/config.json` (Vercel only sees files inside the `web/` directory). The Python pipeline reads the repo-root copy; the Next.js app reads the `web/` copy. Push to deploy both.
 
 ## Local development
 
