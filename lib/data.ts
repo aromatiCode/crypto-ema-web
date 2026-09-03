@@ -18,16 +18,21 @@ interface Row {
 
 /**
  * Fetch the latest trend per (token, timeframe) from Supabase.
- * Returns an empty array if Supabase is not configured.
+ * Returns an empty array if Supabase is not configured or errored.
  */
-export async function fetchLatestTrends(tokens: string[]): Promise<TrendsResponse> {
+export async function fetchLatestTrends(
+  tokens: string[]
+): Promise<TrendsResponse & { supabaseError?: string; rawRowCount?: number }> {
   const client = getServerSupabase();
   if (!client) {
-    return { tokens: tokens.map((t) => ({ token: t, timeframes: {} })), lastUpdated: null };
+    return {
+      tokens: tokens.map((t) => ({ token: t, timeframes: {} })),
+      lastUpdated: null,
+      supabaseError: "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set in Vercel env.",
+      rawRowCount: 0,
+    };
   }
 
-  // Most recent row per (token, timeframe) using PostgREST's order+limit-per-group pattern.
-  // Fetch all rows ordered desc then bucket in code; this is fine for the small dataset.
   const { data, error } = await client
     .from("trend_transitions")
     .select(
@@ -38,7 +43,12 @@ export async function fetchLatestTrends(tokens: string[]): Promise<TrendsRespons
 
   if (error) {
     console.error("Supabase fetch error:", error);
-    return { tokens: tokens.map((t) => ({ token: t, timeframes: {} })), lastUpdated: null };
+    return {
+      tokens: tokens.map((t) => ({ token: t, timeframes: {} })),
+      lastUpdated: null,
+      supabaseError: `${error.message} (code: ${error.code ?? "unknown"})`,
+      rawRowCount: 0,
+    };
   }
 
   const rows = (data as Row[]) ?? [];
@@ -77,5 +87,5 @@ export async function fetchLatestTrends(tokens: string[]): Promise<TrendsRespons
     return t;
   });
 
-  return { tokens: out, lastUpdated };
+  return { tokens: out, lastUpdated, supabaseError: undefined, rawRowCount: rows.length };
 }

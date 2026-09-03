@@ -9,7 +9,7 @@ export const revalidate = 60;
 const tokens = config.tokens;
 
 export default async function Page() {
-  const { tokens: tokenTrends, lastUpdated } = await fetchLatestTrends(tokens);
+  const { tokens: tokenTrends, lastUpdated, supabaseError, rawRowCount } = await fetchLatestTrends(tokens);
 
   const withData = tokenTrends.filter((t) => Object.keys(t.timeframes).length > 0).length;
   const sample = tokenTrends.find((t) => t.token === "BTC");
@@ -17,6 +17,11 @@ export default async function Page() {
     totalTokens: tokens.length,
     tokensWithData: withData,
     lastUpdated,
+    rawRowCount,
+    supabaseError: supabaseError ?? null,
+    hasSupabaseEnv:
+      !!process.env.SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseUrl: process.env.SUPABASE_URL || null,
     sampleBtc: sample
       ? {
           "1m": sample.timeframes["1m"]?.trend ?? null,
@@ -24,9 +29,6 @@ export default async function Page() {
           "15m": sample.timeframes["15m"]?.trend ?? null,
         }
       : null,
-    hasSupabaseEnv:
-      !!process.env.SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    supabaseUrl: process.env.SUPABASE_URL || null,
   };
 
   return (
