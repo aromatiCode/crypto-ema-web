@@ -14,6 +14,7 @@ export interface AppConfig {
   tokens: string[];
   timeframes: Record<TimeframeId, TimeframeMeta>;
   ema_periods: number[];
+  check_interval_minutes: number;
 }
 
 const RAW_TOKENS: string[] = [
@@ -64,4 +65,5 @@ export const config: AppConfig = {
     "15m": { mexc_interval: "Min15", minutes: 15 },
   },
   ema_periods: [20, 50, 100, 200],
+  check_interval_minutes: 1,
 };

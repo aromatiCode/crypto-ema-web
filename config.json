@@ -34,7 +34,7 @@
   "mexc_base_url": "https://contract.mexc.com",
   "request_timeout": 15,
   "extra_candles": 100,
-  "check_interval_minutes": 5,
+  "check_interval_minutes": 1,
   "check_delay_seconds": 5,
   "alert_on_same_trend": true,
   "minimal": "TRUE",

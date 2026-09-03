@@ -21,7 +21,7 @@ export default async function Page() {
               EMA20 · EMA50 · EMA100 · EMA200 across {TIMEFRAMES.map((t) => t).join(" / ")}
             </p>
           </div>
-          <NextRefresh intervalMinutes={5} className="next-refresh next-refresh-header" />
+          <NextRefresh intervalMinutes={config.check_interval_minutes} className="next-refresh next-refresh-header" />
         </div>
       </header>
 
@@ -35,7 +35,7 @@ export default async function Page() {
 
       <footer className="page-footer">
         <span>
-          Data refreshes every 5 minutes via GitHub Actions. This page revalidates every 60s.
+          Data refreshes every {config.check_interval_minutes} min via GitHub Actions. This page revalidates every 60s.
         </span>
       </footer>
     </main>

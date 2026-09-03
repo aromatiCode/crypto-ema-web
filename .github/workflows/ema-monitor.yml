@@ -1,9 +1,9 @@
 name: ema-monitor
 
-on:
-  schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+  on:
+    schedule:
+      - cron: "*/1 * * * *"
+    workflow_dispatch:
 
 concurrency:
   group: ema-monitor
