@@ -1,7 +1,7 @@
 import TrendsTable from "@/components/TrendsTable";
 import { fetchLatestTrends } from "@/lib/data";
 import { TIMEFRAMES } from "@/lib/trends";
-import config from "../config.json";
+import config from "./config.json";
 
 export const revalidate = 60;
 

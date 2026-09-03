@@ -19,11 +19,18 @@ GitHub Actions (cron every 5 min)
 
 ```
 .
-├── config.json                  # shared config (tokens, timeframes, MINIMAL, etc.)
+├── config.json                  # tokens + timeframes (used by the Next.js app)
 ├── .github/workflows/           # GitHub Actions cron + manual run
-├── pipeline/                    # Python data pipeline
+├── cloud/                       # Python data pipeline
+│   ├── config.json              # mirror of repo-root config for the pipeline
+│   ├── mexc.py
+│   ├── config_loader.py
+│   ├── supabase_client.py
+│   ├── telegram.py
+│   ├── run.py
+│   └── requirements.txt
 ├── supabase/migrations/         # SQL migrations
-└── web/                         # Next.js app (deployed to Vercel)
+└── app/, components/, lib/      # Next.js app (deployed to Vercel)
 ```
 
 ## One-time setup
@@ -34,24 +41,24 @@ GitHub Actions (cron every 5 min)
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_CHAT_ID`
-3. **Vercel**: import the repo, set root directory to `web/`. Add env vars:
-   - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY` (server-side)
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. **Vercel**: import the repo. The Next.js app lives at the repo root, so:
+   - **Root Directory**: leave empty (default)
+   - **Framework Preset**: Next.js (auto-detected)
+   - **Build Command**: `next build` (default)
+   - Add env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 4. **Trigger** the GitHub Action once via `workflow_dispatch` to seed the DB.
 5. **Stop** any local `main.py` process; the cloud pipeline is now the source of truth.
 
 ## Editing the token list
 
-Edit `config.json` at the repo root, then also update `web/config.json` (Vercel only sees files inside the `web/` directory). The Python pipeline reads the repo-root copy; the Next.js app reads the `web/` copy. Push to deploy both.
+Edit `config.json` at the repo root and also `cloud/config.json` (the pipeline reads its own copy). Push to deploy both.
 
 ## Local development
 
 ### Pipeline
 
 ```bash
-cd pipeline
+cd cloud
 pip install -r requirements.txt
 SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... python run.py
 ```
@@ -59,7 +66,6 @@ SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... python run.py
 ### Web
 
 ```bash
-cd web
 yarn install
 yarn dev
 ```

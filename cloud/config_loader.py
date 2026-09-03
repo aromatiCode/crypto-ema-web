@@ -1,6 +1,8 @@
-"""Load the shared config.json file at the repo root.
+"""Load the shared config.json for the Python pipeline.
 
-Both the Python pipeline and the Next.js web app read this same file.
+The same config (tokens, timeframes, MEXC URL, etc.) is mirrored at the
+repo root for the Next.js app. The pipeline reads the copy in its own
+directory; the web app reads the repo-root copy.
 """
 
 from __future__ import annotations
@@ -10,8 +12,8 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-CONFIG_PATH = REPO_ROOT / "config.json"
+PIPELINE_DIR = Path(__file__).resolve().parent
+CONFIG_PATH = PIPELINE_DIR / "config.json"
 
 
 def load_config(path: Path | None = None) -> dict[str, Any]:
