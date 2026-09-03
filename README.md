@@ -60,10 +60,20 @@ GitHub Actions (cron every 5 min)
 In addition to the env vars above, set these in **Vercel** (Settings → Environment Variables):
 
 - `ADMIN_SESSION_SECRET` — a random string, at least 16 chars (e.g. `openssl rand -hex 32`)
-- `GITHUB_TOKEN` — a Personal Access Token with `contents:write` scope on this repo
+- `GITHUB_TOKEN` — a GitHub Personal Access Token with write access to this repo's contents
 - `GITHUB_REPO_OWNER` — e.g. `aromatiCode`
 - `GITHUB_REPO_NAME` — e.g. `crypto-ema-web`
 - `GITHUB_REPO_BRANCH` — `main` (default if omitted)
+
+### Getting the GitHub token
+
+1. Go to https://github.com/settings/tokens
+2. Click **Generate new token** → **Fine-grained token** (recommended)
+3. Give it a name like `crypto-ema-admin`
+4. Under **Repository access**, select **Only select repositories** and choose this repo
+5. Under **Permissions** → **Repository permissions**:
+   - Set **Contents** to **Read and write**
+6. Click **Generate token** and copy it immediately
 
 Then run the new migration in Supabase: `supabase/migrations/0002_admin.sql`.
 
