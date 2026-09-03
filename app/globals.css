@@ -49,6 +49,50 @@ html, body {
   letter-spacing: -0.01em;
 }
 
+.page-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.next-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.next-refresh-label {
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.next-refresh-value {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+  text-align: right;
+}
+
+.next-refresh.is-close {
+  border-color: var(--accent);
+}
+
+.next-refresh.is-close .next-refresh-value {
+  color: var(--accent);
+}
+
 .subtitle {
   margin: 0 0 24px;
   color: var(--text-dim);
