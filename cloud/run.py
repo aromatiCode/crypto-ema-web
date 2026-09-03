@@ -39,10 +39,7 @@ logger = logging.getLogger("ema-pipeline")
 
 
 def _sleep_until_next_run(config: dict[str, Any]) -> None:
-    """Sleep until the next scheduled boundary + configured delay.
-
-    Mirrors the original main.py scheduling behavior.
-    """
+    """Sleep until the next scheduled boundary + configured delay."""
     delay = config.get("check_delay_seconds", 5)
     interval = config["check_interval_minutes"]
     now = datetime.now(PH_TIMEZONE)
@@ -60,17 +57,45 @@ def _sleep_until_next_run(config: dict[str, Any]) -> None:
 
 
 def _fetch_one(token: str, timeframe: str, config: dict[str, Any]) -> dict[str, Any] | None:
-    try:
-        return calculate_ema(token, timeframe, config)
-    except requests.exceptions.HTTPError as http_err:
-        if http_err.response is not None and http_err.response.status_code == 429:
-            logger.error("Rate limit hit for %s %s; aborting run.", token, timeframe)
-            raise
-        logger.exception("HTTP error for %s %s: %s", token, timeframe, http_err)
-        return None
-    except Exception as exc:
-        logger.exception("Failed to compute EMA for %s %s: %s", token, timeframe, exc)
-        return None
+    """Fetch EMA for one (token, timeframe) with retry on MEXC rate limit.
+
+    MEXC may return HTTP 200 with payload {success: False, code: 510}
+    when requests are too frequent. We treat that as a rate limit and
+    retry with exponential backoff up to 5 times.
+    """
+    max_attempts = 5
+    base_delay = 2.0  # seconds
+    last_exc: Exception | None = None
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return calculate_ema(token, timeframe, config)
+        except requests.exceptions.HTTPError as http_err:
+            status = http_err.response.status_code if http_err.response is not None else None
+            if status == 429:
+                wait = base_delay * (2 ** (attempt - 1))
+                logger.warning("HTTP 429 for %s %s (attempt %d/%d). Backing off %.1fs.", token, timeframe, attempt, max_attempts, wait)
+                time.sleep(wait)
+                last_exc = http_err
+                continue
+            logger.exception("HTTP error for %s %s: %s", token, timeframe, http_err)
+            return None
+        except RuntimeError as exc:
+            msg = str(exc)
+            if "code': 510" in msg or "Requests are too frequent" in msg:
+                wait = base_delay * (2 ** (attempt - 1))
+                logger.warning("MEXC 510 rate limit for %s %s (attempt %d/%d). Backing off %.1fs.", token, timeframe, attempt, max_attempts, wait)
+                time.sleep(wait)
+                last_exc = exc
+                continue
+            logger.exception("RuntimeError for %s %s: %s", token, timeframe, exc)
+            return None
+        except Exception as exc:
+            logger.exception("Failed to compute EMA for %s %s: %s", token, timeframe, exc)
+            return None
+
+    logger.error("Giving up on %s %s after %d attempts.", token, timeframe, max_attempts)
+    return None
 
 
 def run_once() -> None:
@@ -85,7 +110,7 @@ def run_once() -> None:
 
     pairs = [(t, tf) for t in tokens for tf in timeframes]
 
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with ThreadPoolExecutor(max_workers=1) as pool:
         futures = {
             pool.submit(_fetch_one, token, timeframe, config): (token, timeframe)
             for token, timeframe in pairs
@@ -94,10 +119,8 @@ def run_once() -> None:
             token, timeframe = futures[fut]
             try:
                 res = fut.result()
-            except requests.exceptions.HTTPError as http_err:
-                if http_err.response is not None and http_err.response.status_code == 429:
-                    logger.error("Aborting due to 429.")
-                    raise
+            except Exception as exc:
+                logger.exception("Unhandled error for %s %s: %s", token, timeframe, exc)
                 continue
             if res is not None:
                 results_by_token[token][timeframe] = res
@@ -164,7 +187,7 @@ def main() -> None:
             run_once()
         except requests.exceptions.HTTPError as http_err:
             if http_err.response is not None and http_err.response.status_code == 429:
-                logger.warning("Rate limited. Backing off for 60s.")
+                logger.warning("Rate limited globally. Backing off for 60s.")
                 time.sleep(60)
                 continue
             logger.exception("HTTP error in loop: %s", http_err)
