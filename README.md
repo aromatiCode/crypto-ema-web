@@ -51,8 +51,7 @@ GitHub Actions (cron every 5 min)
    - Create a Railway project
    - Connect the GitHub repo
    - Set **Root Directory** to `cloud`
-   - Add env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
-   - Railway will auto-detect Python, install from `requirements.txt`, and run `python cloud/run.py` forever
+   - Railway will auto-detect Python, install from `requirements.txt`, and run `python run.py` forever
 5. **Stop** any local `main.py` process; Railway is now the source of truth.
 
 ## Editing the token list
