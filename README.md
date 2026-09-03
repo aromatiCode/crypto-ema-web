@@ -35,8 +35,10 @@ GitHub Actions (cron every 5 min)
 
 ## One-time setup
 
-1. **Supabase**: create a project, run `supabase/migrations/0001_init.sql` in the SQL editor.
-2. **GitHub**: push this repo (public so free Actions minutes apply). Add secrets:
+1. **Supabase**: create a project, run both migrations in the SQL editor:
+   - `supabase/migrations/0001_init.sql`
+   - `supabase/migrations/0002_admin.sql`
+2. **GitHub**: push this repo (public so free Actions minutes apply). Add secrets for manual pipeline runs:
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `TELEGRAM_BOT_TOKEN`
@@ -44,10 +46,14 @@ GitHub Actions (cron every 5 min)
 3. **Vercel**: import the repo. The Next.js app lives at the repo root, so:
    - **Root Directory**: leave empty (default)
    - **Framework Preset**: Next.js (auto-detected)
-   - **Build Command**: `next build` (default)
-   - Add env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. **Trigger** the GitHub Action once via `workflow_dispatch` to seed the DB.
-5. **Stop** any local `main.py` process; the cloud pipeline is now the source of truth.
+   - Add env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, plus the admin vars (`ADMIN_SESSION_SECRET`, `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GITHUB_REPO_BRANCH`)
+4. **Railway**: deploy the `cloud/` directory as a worker:
+   - Create a Railway project
+   - Connect the GitHub repo
+   - Set **Root Directory** to `cloud`
+   - Add env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
+   - Railway will auto-detect Python, install from `requirements.txt`, and run `python cloud/run.py` forever
+5. **Stop** any local `main.py` process; Railway is now the source of truth.
 
 ## Editing the token list
 
@@ -79,9 +85,13 @@ Then run the new migration in Supabase: `supabase/migrations/0002_admin.sql`.
 
 The first sign-in (with `admin` / `admin`) automatically creates the `admin_users` row.
 
+## Pipeline
+
+The Python worker runs on Railway as a long-lived process (`while True`). It fetches EMAs from MEXC, writes trend transitions to Supabase, and sends Telegram alerts when the 5m+15m+1m condition fires.
+
 ## Local development
 
-### Pipeline
+### Pipeline (worker)
 
 ```bash
 cd cloud

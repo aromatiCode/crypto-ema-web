@@ -1,12 +1,14 @@
 """Pipeline entrypoint: fetch EMAs from MEXC, write transitions to Supabase,
-and send Telegram alerts. Designed to run as a one-shot script under
-GitHub Actions every 5 minutes.
+and send Telegram alerts. Designed to run as a long-lived worker on Railway
+(or any always-on host). Each loop iteration is roughly equivalent to one
+GitHub Actions run.
 """
 
 from __future__ import annotations
 
 import logging
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -36,12 +38,10 @@ logging.basicConfig(
 logger = logging.getLogger("ema-pipeline")
 
 
-def _sleep_until_candle_close(config: dict[str, Any]) -> None:
-    """Sleep until the next 5m boundary + configured delay.
+def _sleep_until_next_run(config: dict[str, Any]) -> None:
+    """Sleep until the next scheduled boundary + configured delay.
 
-    Matches the original main.py scheduling behavior, but in a one-shot
-    script the value is informational: we always do a fresh fetch when
-    invoked. Kept as a no-op helper for parity / future use.
+    Mirrors the original main.py scheduling behavior.
     """
     delay = config.get("check_delay_seconds", 5)
     interval = config["check_interval_minutes"]
@@ -53,7 +53,10 @@ def _sleep_until_candle_close(config: dict[str, Any]) -> None:
     else:
         next_close = now.replace(minute=next_boundary, second=0, microsecond=0)
     target = next_close + timedelta(seconds=delay)
-    logger.info("Next candle close target (informational): %s", target.isoformat())
+    sleep_seconds = max(0, (target - datetime.now(PH_TIMEZONE)).total_seconds())
+    if sleep_seconds > 0:
+        logger.info("Sleeping %.1fs until next scheduled run at %s", sleep_seconds, target.isoformat())
+        time.sleep(sleep_seconds)
 
 
 def _fetch_one(token: str, timeframe: str, config: dict[str, Any]) -> dict[str, Any] | None:
@@ -70,14 +73,12 @@ def _fetch_one(token: str, timeframe: str, config: dict[str, Any]) -> dict[str, 
         return None
 
 
-def run() -> int:
+def run_once() -> None:
     config = load_config()
     tokens = get_tokens(config)
     timeframes = list(config["timeframes"].keys())
 
     logger.info("Processing %d tokens x %d timeframes", len(tokens), len(timeframes))
-
-    _sleep_until_candle_close(config)
 
     client = get_client()
     results_by_token: dict[str, dict[str, dict[str, Any]]] = {t: {} for t in tokens}
@@ -96,7 +97,7 @@ def run() -> int:
             except requests.exceptions.HTTPError as http_err:
                 if http_err.response is not None and http_err.response.status_code == 429:
                     logger.error("Aborting due to 429.")
-                    return 2
+                    raise
                 continue
             if res is not None:
                 results_by_token[token][timeframe] = res
@@ -153,8 +154,28 @@ def run() -> int:
         transitions_written,
         alerts_sent,
     )
-    return 0
+
+
+def main() -> None:
+    logger.info("EMA pipeline worker starting")
+    while True:
+        try:
+            _sleep_until_next_run(load_config())
+            run_once()
+        except requests.exceptions.HTTPError as http_err:
+            if http_err.response is not None and http_err.response.status_code == 429:
+                logger.warning("Rate limited. Backing off for 60s.")
+                time.sleep(60)
+                continue
+            logger.exception("HTTP error in loop: %s", http_err)
+            time.sleep(10)
+        except Exception as exc:
+            logger.exception("Unexpected error in loop: %s", exc)
+            time.sleep(10)
 
 
 if __name__ == "__main__":
-    sys.exit(run())
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.info("Pipeline worker stopped by user.")

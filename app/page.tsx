@@ -19,9 +19,9 @@ export default async function Page() {
     lastUpdated,
     sampleBtc: sample
       ? {
-          1m: sample.timeframes["1m"]?.trend ?? null,
-          5m: sample.timeframes["5m"]?.trend ?? null,
-          15m: sample.timeframes["15m"]?.trend ?? null,
+          "1m": sample.timeframes["1m"]?.trend ?? null,
+          "5m": sample.timeframes["5m"]?.trend ?? null,
+          "15m": sample.timeframes["15m"]?.trend ?? null,
         }
       : null,
     hasSupabaseEnv:
@@ -60,7 +60,7 @@ export default async function Page() {
 
       <footer className="page-footer">
         <span>
-          Data refreshes every {config.check_interval_minutes} min via GitHub Actions. This page revalidates every 60s.
+          Data refreshes every {config.check_interval_minutes} min via the Railway worker. This page revalidates every 60s.
         </span>
       </footer>
     </main>
