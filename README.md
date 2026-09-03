@@ -51,7 +51,23 @@ GitHub Actions (cron every 5 min)
 
 ## Editing the token list
 
-Edit `config.json` at the repo root and also `cloud/config.json` (the pipeline reads its own copy). Push to deploy both.
+**Via the admin UI** (recommended): sign in at `/admin/login` with default credentials `admin` / `admin`, then add or remove tokens from the dashboard. Changes are committed to the repo via the GitHub Contents API; Vercel auto-redeploys within ~30-60s. **Change the default password from the UI immediately after first login.**
+
+**Manually**: edit `config.json` at the repo root and `cloud/config.json` (the pipeline reads its own copy). Push to deploy both.
+
+## Admin setup (one-time)
+
+In addition to the env vars above, set these in **Vercel** (Settings → Environment Variables):
+
+- `ADMIN_SESSION_SECRET` — a random string, at least 16 chars (e.g. `openssl rand -hex 32`)
+- `GITHUB_TOKEN` — a Personal Access Token with `contents:write` scope on this repo
+- `GITHUB_REPO_OWNER` — e.g. `aromatiCode`
+- `GITHUB_REPO_NAME` — e.g. `crypto-ema-web`
+- `GITHUB_REPO_BRANCH` — `main` (default if omitted)
+
+Then run the new migration in Supabase: `supabase/migrations/0002_admin.sql`.
+
+The first sign-in (with `admin` / `admin`) automatically creates the `admin_users` row.
 
 ## Local development
 

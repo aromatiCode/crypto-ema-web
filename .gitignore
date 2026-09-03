@@ -30,3 +30,7 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+
+tsconfig.tsbuildinfo
+package-lock.json
+
