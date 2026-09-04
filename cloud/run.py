@@ -7,9 +7,7 @@ GitHub Actions run.
 from __future__ import annotations
 
 import logging
-import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Any
@@ -110,20 +108,15 @@ def run_once() -> None:
 
     pairs = [(t, tf) for t in tokens for tf in timeframes]
 
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        futures = {
-            pool.submit(_fetch_one, token, timeframe, config): (token, timeframe)
-            for token, timeframe in pairs
-        }
-        for fut in as_completed(futures):
-            token, timeframe = futures[fut]
-            try:
-                res = fut.result()
-            except Exception as exc:
-                logger.exception("Unhandled error for %s %s: %s", token, timeframe, exc)
-                continue
-            if res is not None:
-                results_by_token[token][timeframe] = res
+    results_by_token: dict[str, dict[str, dict[str, Any]]] = {t: {} for t in tokens}
+
+    mexc_delay = 2.0  # seconds between MEXC requests to avoid rate limiting on Railway shared IPs
+    for idx, (token, timeframe) in enumerate(pairs):
+        if idx > 0:
+            time.sleep(mexc_delay)
+        res = _fetch_one(token, timeframe, config)
+        if res is not None:
+            results_by_token[token][timeframe] = res
 
     transitions_written = 0
     for token in tokens:
