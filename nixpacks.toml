@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python312"]
+
+[phases.install]
+cmds = ["python -m pip install -r cloud/requirements.txt"]
+
+[start]
+cmd = "python cloud/run.py"
