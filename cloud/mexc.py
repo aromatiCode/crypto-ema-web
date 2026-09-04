@@ -7,6 +7,7 @@ candle-filtering logic are preserved exactly.
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any
 
 import pandas as pd
@@ -106,12 +107,15 @@ def get_mexc_klines(
         config["extra_candles"],
     )
     if len(df) < required:
-        raise RuntimeError(
-            f"Not enough closed candles for {symbol} {timeframe}. "
-            f"Required={required}, available={len(df)}"
+        logger.warning(
+            "Not enough closed candles for %s %s: required=%d, available=%d. Using available candles.",
+            symbol,
+            timeframe,
+            required,
+            len(df),
         )
 
-    df = df.tail(required).reset_index(drop=True)
+    df = df.tail(min(len(df), required)).reset_index(drop=True)
     return df
 
 
@@ -128,6 +132,9 @@ def determine_trend(ema_values: dict[str, float]) -> str:
     ema50 = ema_values["EMA50"]
     ema100 = ema_values["EMA100"]
     ema200 = ema_values["EMA200"]
+
+    if any(math.isnan(v) for v in [ema20, ema50, ema100, ema200] if isinstance(v, float)):
+        return "NEUTRAL"
 
     if ema20 > ema50 and ema50 > ema100 and ema100 > ema200:
         return "BULLISH"

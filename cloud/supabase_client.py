@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 from typing import Any
 
@@ -36,6 +37,16 @@ def get_latest_trend(client: Client, token: str, timeframe: str) -> str:
     return str(rows[0]["new_trend"])
 
 
+def _to_pg(value: float) -> float | None:
+    """Convert NaN/Inf to None for safe Postgres insertion."""
+    if value is None:
+        return None
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+    return float(value)
+
+
 def insert_transition(
     client: Client,
     *,
@@ -52,11 +63,11 @@ def insert_transition(
         "timeframe": timeframe,
         "previous_trend": previous_trend,
         "new_trend": new_trend,
-        "ema20": ema_values["EMA20"],
-        "ema50": ema_values["EMA50"],
-        "ema100": ema_values["EMA100"],
-        "ema200": ema_values["EMA200"],
-        "close": close,
+        "ema20": _to_pg(ema_values["EMA20"]),
+        "ema50": _to_pg(ema_values["EMA50"]),
+        "ema100": _to_pg(ema_values["EMA100"]),
+        "ema200": _to_pg(ema_values["EMA200"]),
+        "close": _to_pg(close),
         "candle_time": candle_time.isoformat() if hasattr(candle_time, "isoformat") else str(candle_time),
     }
     client.table(TABLE).insert(payload).execute()
