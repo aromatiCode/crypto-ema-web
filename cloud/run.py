@@ -108,15 +108,21 @@ def run_once() -> None:
 
     pairs = [(t, tf) for t in tokens for tf in timeframes]
 
-    results_by_token: dict[str, dict[str, dict[str, Any]]] = {t: {} for t in tokens}
-
     mexc_delay = 2.0  # seconds between MEXC requests to avoid rate limiting on Railway shared IPs
+    fetch_stats: dict[str, dict[str, str]] = {}  # token -> timeframe -> "ok" | reason
     for idx, (token, timeframe) in enumerate(pairs):
         if idx > 0:
             time.sleep(mexc_delay)
-        res = _fetch_one(token, timeframe, config)
-        if res is not None:
-            results_by_token[token][timeframe] = res
+        try:
+            res = _fetch_one(token, timeframe, config)
+            if res is not None:
+                results_by_token[token][timeframe] = res
+                fetch_stats.setdefault(token, {})[timeframe] = "ok"
+            else:
+                fetch_stats.setdefault(token, {})[timeframe] = "no data"
+        except Exception as exc:
+            fetch_stats.setdefault(token, {})[timeframe] = str(exc)
+            logger.warning("Fetch error for %s %s: %s", token, timeframe, exc)
 
     transitions_written = 0
     for token in tokens:
@@ -170,6 +176,13 @@ def run_once() -> None:
         transitions_written,
         alerts_sent,
     )
+
+    # Log per-token fetch summary so we can see which tokens are missing data
+    for token in tokens:
+        stats = fetch_stats.get(token, {})
+        failed = [f"{tf}:{r}" for tf, r in stats.items() if r != "ok"]
+        if failed:
+            logger.info("Token %s fetch status: %s", token, ", ".join(failed))
 
 
 def main() -> None:
